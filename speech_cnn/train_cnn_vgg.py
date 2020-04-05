@@ -15,10 +15,11 @@ import os
 import matplotlib.pyplot as plt
 
 import keras
-from keras.models import Sequential, model_from_json
+from keras.applications.vgg16 import VGG16
+from keras.models import Model, model_from_json
 from keras.layers import Dense, Dropout, Flatten, BatchNormalization, Activation
 from keras.layers import Conv2D, MaxPooling2D
-from keras.callbacks import Callback, ReduceLROnPlateau 
+from keras.callbacks import Callback
 
 import tensorflow as tf
 
@@ -62,11 +63,11 @@ num_classes = 3
 input_width=128
 input_height=173
 
-# Create training and validation datasets
+# Create training, validation and test datasets
 from sklearn.model_selection import train_test_split
 
 # First split the data in two sets, 80% for training, 20% for Val/Test)
-X_train, X_val, y_train, y_val = train_test_split(x,y, test_size=0.2, random_state=1, stratify=y)
+X_train, X_val, y_train, y_val = train_test_split(x,y, test_size=0.15, random_state=1, stratify=y)
 
 # Second split the 20% into validation and test sets
 #X_test, X_val, y_test, y_val = train_test_split(X_valtest, y_valtest, test_size=0.5, random_state=1, stratify=y_valtest)
@@ -74,92 +75,62 @@ X_train, X_val, y_train, y_val = train_test_split(x,y, test_size=0.2, random_sta
 training_set_size = X_train.shape[0]
 print(X_train.shape, y_train.shape, X_val.shape, y_val.shape, sep='\n')
 
+#Prepare data for VGG model
+X_train=np.stack([X_train]*3, axis=-1)
+X_val=np.stack([X_val]*3, axis=-1)
+
 #Reshape input data for Tensorflow format  Num,Width,Height,Channels
-X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], X_train.shape[2] , 1).astype('float32')
-X_val = X_val.reshape(X_val.shape[0], X_val.shape[1], X_val.shape[2] , 1).astype('float32')
+X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], X_train.shape[2] , 3).astype('float32')
+X_val = X_val.reshape(X_val.shape[0], X_val.shape[1], X_val.shape[2] , 3).astype('float32')
 #X_test = X_test.reshape(X_test.shape[0], X_test.shape[1], X_test.shape[2] , 1).astype('float32')
 
 # convert class vectors to binary class matrices
 y_train = keras.utils.to_categorical(y_train, num_classes)
-y_val = keras.utils.to_categorical(y_val, num_classes)
 #y_test = keras.utils.to_categorical(y_test, num_classes)
+y_val = keras.utils.to_categorical(y_val, num_classes)
 
 # More variables and parameters
 nb_train_samples = len(X_train)
 nb_validation_samples = len(X_val)
 
-#Build a cnn model with 3 conv layers with components 2*Conv2D-BatchNorm-Relu layers and  MaxPool
-# using dropout inside the conv layers and finally 3 FC layers
-model = Sequential()
-# Convolutional layer
-model.add(Conv2D(16, kernel_size=(3, 3),
-                 input_shape=(input_width,input_height,1),
-                 use_bias=False))
-model.add(BatchNormalization())
-model.add(Activation("relu"))
-model.add(Dropout(0.1))
-model.add(Conv2D(16, (3, 3),  strides=(1,1), use_bias=False))
-model.add(BatchNormalization())
-model.add(Activation("relu"))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-# Convolutional layer
-model.add(Conv2D(32, (3, 3),   strides=(1,1), use_bias=False))
-model.add(BatchNormalization())
-model.add(Activation("relu"))
-model.add(Dropout(0.1))
-model.add(Conv2D(32, (3, 3), strides=(1,1),  use_bias=False))
-model.add(BatchNormalization())
-model.add(Activation("relu"))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-# Convolutional layer
-model.add(Conv2D(128, (3, 3),   strides=(1,1), use_bias=False))
-model.add(BatchNormalization())
-model.add(Activation("relu"))
-model.add(Dropout(0.1))
-model.add(Conv2D(128, (3, 3), strides=(1,1),  use_bias=False))
-model.add(BatchNormalization())
-model.add(Activation("relu"))
-model.add(MaxPooling2D(pool_size=(2, 2)))
+# Load a pretrained model, VGG16
+model = VGG16(include_top=False, input_shape=(input_width, input_height, 3))
+# mark loaded layers as not trainable
+for layer in model.layers:
+    layer.trainable = False
+# add final FC layers to classify
+flat1 = Flatten()(model.layers[-1].output)
+class1 = Dense(512, activation='relu', kernel_initializer='he_uniform')(flat1)
+class1 = Dropout(0.1)(class1)
+class2 = Dense(512, activation='relu', kernel_initializer='he_uniform')(class1)
+class2 = Dropout(0.1)(class2)
+class3 = Dense(512, activation='relu', kernel_initializer='he_uniform')(class2)
+class3 = Dropout(0.1)(class3)
+output = Dense(num_classes, activation='softmax')(class3)
 
-model.add(Dropout(0.3))
-model.add(Flatten())
-# Fully connected layers
-model.add(Dense(256, use_bias=False))
-model.add(BatchNormalization())
-model.add(Activation("relu"))
-model.add(Dropout(0.2))
-
-model.add(Dense(256, use_bias=False))
-model.add(BatchNormalization())
-model.add(Activation("relu"))
-model.add(Dropout(0.2))
-
-model.add(Dense(num_classes, use_bias=False))
-model.add(BatchNormalization())
-model.add(Activation("softmax"))
+# define the new model
+model = Model(inputs=model.inputs, outputs=output)
 
 model.summary()
 
 # Define loss function and optimizer
 model.compile(loss=keras.losses.categorical_crossentropy,
-              optimizer=keras.optimizers.Adam(lr=0.01),
+              optimizer= keras.optimizers.Adam(),
               metrics=['accuracy'])
 
-#Creating the image generator for Data Augmentation
+#Creating the image generator for data augmentation
 from keras.preprocessing.image import ImageDataGenerator
 
 # define data preparation
 h_shift = 0.1
 w_shift = 0.3
-
+#Probar fill_mode='reflect'
 train_datagen = ImageDataGenerator(featurewise_center=True,featurewise_std_normalization=True,
-                                   zoom_range=[0.9,1.2], shear_range=0.1, horizontal_flip=True,
-                                   vertical_flip=True,fill_mode='reflect',
+                                   zoom_range=[0.9,1.2], shear_range=0.05, horizontal_flip=True,
                                    width_shift_range=w_shift, height_shift_range=h_shift,
                                    data_format="channels_last")
 val_datagen = ImageDataGenerator(featurewise_center=True,featurewise_std_normalization=True,
-                                   zoom_range=[0.9,1.2], shear_range=0.1, horizontal_flip=True,
-                                   vertical_flip=True,fill_mode='reflect',
+                                   zoom_range=[0.9,1.2], shear_range=0.05, horizontal_flip=True,
                                    width_shift_range=w_shift, height_shift_range=h_shift,
                                    data_format="channels_last")
 test_datagen = ImageDataGenerator()
@@ -180,10 +151,7 @@ class LogRunMetrics(Callback):
         run.log('Accuracy', log['acc'])
         run.log('Val_Loss', log['val_loss'])
         run.log('Val_Accuracy', log['val_acc'])
-        # Reduce LR
-        ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, verbose=0, cooldown=2, min_lr=0.0001)
-        run.log('LearningRate',self.model.optimizer.lr)
-        
+
 #Train the model and save the parameters
 history = model.fit_generator(
     train_generator, 
@@ -193,10 +161,8 @@ history = model.fit_generator(
     validation_steps=nb_validation_samples // batch_size,
     callbacks=[LogRunMetrics()]
 )
-
 # Evaluate the model on the validation or test set
 score=model.evaluate_generator(test_generator, steps=len(X_val)//batch_size, verbose=0)
-
 
 # log the metrics
 run.log("Final test loss", score[0])
@@ -208,7 +174,6 @@ print('Test accuracy:', score[1])
 # log a single value
 run.log("Training size", args.training_size)
 print('Training size:', args.training_size)
-
 #Plot the accuracy and loss along the epochs
 fig = plt.figure(figsize=(25, 10))
 ax = fig.add_subplot(131)
@@ -223,7 +188,6 @@ val_acc = history.history['val_acc']
 loss = history.history['loss']
 val_loss = history.history['val_loss']
 epochs = range(1, len(acc) + 1)
-
 #Plot the accuracy and loss of training and validation datasets
 ax=fig.add_subplot(132)
 ax.plot(epochs, acc, 'blue', label='Training acc')
