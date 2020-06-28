@@ -13,7 +13,7 @@ import argparse
 import os
 
 import matplotlib.pyplot as plt
-
+# Importing the keras modules
 import keras
 from keras.models import Sequential, model_from_json
 from keras.layers import Dense, Dropout, Flatten
@@ -56,6 +56,9 @@ y_npz = np.load(data_folder+'/'+args.y_filename)
 y = y_npz['arr_0']
 
 # Global variables and parameters
+# Epochs: iterations on the dataset
+# Batch size
+# Num Classes: number of target labels
 n_epochs = args.n_epochs
 batch_size = args.batch_size
 num_classes = 3

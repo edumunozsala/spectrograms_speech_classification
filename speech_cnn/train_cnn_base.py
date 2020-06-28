@@ -13,7 +13,7 @@ import argparse
 import os
 
 import matplotlib.pyplot as plt
-
+# Importing the keras modules
 import keras
 from keras.models import Sequential, model_from_json
 from keras.layers import Dense, Dropout, Flatten
@@ -21,7 +21,7 @@ from keras.layers import Conv2D, MaxPooling2D
 from keras.callbacks import Callback
 
 import tensorflow as tf
-
+# Import the Run module of Azure ML
 from azureml.core import Run
 
 print("Keras version:", keras.__version__)
@@ -43,7 +43,7 @@ parser.add_argument('--training_size', type=str, dest='training_size', help='Siz
 parser.add_argument('--n_epochs', type=int, dest='n_epochs', help='Number of epochs')
 
 args = parser.parse_args()
-
+# Set the data folder where images are stored
 data_folder = args.data_folder
 
 print('training dataset is stored here:', data_folder)
@@ -57,6 +57,9 @@ y_npz = np.load(data_folder+'/'+args.y_filename)
 y = y_npz['arr_0']
 
 # Define global variables
+# Epochs: iterations on the dataset
+# Batch size
+# Num Classes: number of target labels
 n_epochs = args.n_epochs
 batch_size = args.batch_size
 num_classes = 3

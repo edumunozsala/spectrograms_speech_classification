@@ -14,6 +14,7 @@ import os
 
 import matplotlib.pyplot as plt
 
+# Importing the keras modules
 import keras
 from keras.applications.vgg16 import VGG16
 from keras.models import Model, model_from_json
@@ -22,7 +23,7 @@ from keras.layers import Conv2D, MaxPooling2D
 from keras.callbacks import Callback
 
 import tensorflow as tf
-
+# Import the Run module of Azure ML
 from azureml.core import Run
 
 print("Keras version:", keras.__version__)
@@ -57,6 +58,9 @@ y_npz = np.load(data_folder+'/'+args.y_filename)
 y = y_npz['arr_0']
 
 # Global variables and parameters
+# Epochs: iterations on the dataset
+# Batch size
+# Num Classes: number of target labels
 n_epochs = args.n_epochs
 batch_size = args.batch_size
 num_classes = 3
@@ -86,8 +90,8 @@ X_val = X_val.reshape(X_val.shape[0], X_val.shape[1], X_val.shape[2] , 3).astype
 
 # convert class vectors to binary class matrices
 y_train = keras.utils.to_categorical(y_train, num_classes)
-#y_test = keras.utils.to_categorical(y_test, num_classes)
 y_val = keras.utils.to_categorical(y_val, num_classes)
+#y_test = keras.utils.to_categorical(y_test, num_classes)
 
 # More variables and parameters
 nb_train_samples = len(X_train)

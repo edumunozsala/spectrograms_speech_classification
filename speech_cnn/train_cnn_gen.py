@@ -13,7 +13,7 @@ import argparse
 import os
 
 import matplotlib.pyplot as plt
-
+# Importing the keras modules
 import keras
 from keras.models import Sequential, model_from_json
 from keras.layers import Dense, Dropout, Flatten, BatchNormalization, Activation
@@ -21,7 +21,7 @@ from keras.layers import Conv2D, MaxPooling2D
 from keras.callbacks import Callback, ReduceLROnPlateau 
 
 import tensorflow as tf
-
+# Import the Run module of Azure ML
 from azureml.core import Run
 
 print("Keras version:", keras.__version__)
@@ -56,6 +56,9 @@ y_npz = np.load(data_folder+'/'+args.y_filename)
 y = y_npz['arr_0']
 
 # Global variables and parameters
+# Epochs: iterations on the dataset
+# Batch size
+# Num Classes: number of target labels
 n_epochs = args.n_epochs
 batch_size = args.batch_size
 num_classes = 3
@@ -67,6 +70,8 @@ from sklearn.model_selection import train_test_split
 
 # First split the data in two sets, 80% for training, 20% for Val/Test)
 X_train, X_val, y_train, y_val = train_test_split(x,y, test_size=0.2, random_state=1, stratify=y)
+
+# For improvement purposes we will not use the test dataset, we use it in previous experiments.
 
 # Second split the 20% into validation and test sets
 #X_test, X_val, y_test, y_val = train_test_split(X_valtest, y_valtest, test_size=0.5, random_state=1, stratify=y_valtest)
@@ -91,7 +96,7 @@ nb_validation_samples = len(X_val)
 #Build a cnn model with 3 conv layers with components 2*Conv2D-BatchNorm-Relu layers and  MaxPool
 # using dropout inside the conv layers and finally 3 FC layers
 model = Sequential()
-# Convolutional layer
+
 model.add(Conv2D(16, kernel_size=(3, 3),
                  input_shape=(input_width,input_height,1),
                  use_bias=False))
@@ -151,7 +156,7 @@ from keras.preprocessing.image import ImageDataGenerator
 # define data preparation
 h_shift = 0.1
 w_shift = 0.3
-
+# Define the transformations on the images: zoom, horizontal and vertical flip, width and height shift,...
 train_datagen = ImageDataGenerator(featurewise_center=True,featurewise_std_normalization=True,
                                    zoom_range=[0.9,1.2], shear_range=0.1, horizontal_flip=True,
                                    vertical_flip=True,fill_mode='reflect',
@@ -196,7 +201,6 @@ history = model.fit_generator(
 
 # Evaluate the model on the validation or test set
 score=model.evaluate_generator(test_generator, steps=len(X_val)//batch_size, verbose=0)
-
 
 # log the metrics
 run.log("Final test loss", score[0])
